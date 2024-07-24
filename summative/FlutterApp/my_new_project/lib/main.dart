@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(LifeExpectancyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => LifeExpectancyModel(),
+      child: const LifeExpectancyApp(),
+    ),
+  );
 }
 
 class LifeExpectancyApp extends StatelessWidget {
+  const LifeExpectancyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -16,150 +25,226 @@ class LifeExpectancyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.teal,
         fontFamily: GoogleFonts.poppins().fontFamily,
-        scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: LifeExpectancyCalculator(),
+      home: const LifeExpectancyCalculator(),
     );
   }
 }
 
-class LifeExpectancyCalculator extends StatefulWidget {
-  @override
-  _LifeExpectancyCalculatorState createState() =>
-      _LifeExpectancyCalculatorState();
+class LifeExpectancyModel extends ChangeNotifier {
+  bool _isLoading = false;
+  String? _prediction;
+  String? _error;
+
+  bool get isLoading => _isLoading;
+  String? get prediction => _prediction;
+  String? get error => _error;
+
+  Future<void> predictLifeExpectancy(Map<String, double> data) async {
+    _isLoading = true;
+    _prediction = null;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://your-api-endpoint.com/predict'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        _prediction = result['prediction'].toString();
+      } else {
+        throw Exception('Failed to predict life expectancy');
+      }
+    } catch (e) {
+      _error = 'An error occurred: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
 
-class _LifeExpectancyCalculatorState extends State<LifeExpectancyCalculator> {
+class LifeExpectancyCalculator extends StatelessWidget {
+  const LifeExpectancyCalculator({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.green.shade200, Colors.green.shade600],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top,
+              ),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: LifeExpectancyForm(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LifeExpectancyForm extends StatefulWidget {
+  const LifeExpectancyForm({Key? key}) : super(key: key);
+
+  @override
+  _LifeExpectancyFormState createState() => _LifeExpectancyFormState();
+}
+
+class _LifeExpectancyFormState extends State<LifeExpectancyForm> {
   final _formKey = GlobalKey<FormState>();
-  String selectedCountry = 'USA';
-  final TextEditingController bmiController = TextEditingController();
-  final TextEditingController incomeCompositionController =
+  final TextEditingController rdSpendController = TextEditingController();
+  final TextEditingController administrationController =
       TextEditingController();
-
-  final List<String> countries = ['USA', 'Canada', 'UK', 'Australia', 'Japan'];
-
-  bool _isLoading = false;
+  final TextEditingController marketingSpendController =
+      TextEditingController();
 
   @override
   void dispose() {
-    bmiController.dispose();
-    incomeCompositionController.dispose();
+    rdSpendController.dispose();
+    administrationController.dispose();
+    marketingSpendController.dispose();
     super.dispose();
   }
 
-  Future<void> _predictLifeExpectancy() async {
+  void _predictLifeExpectancy() {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        final response = await http.post(
-          Uri.parse('https://your-api-endpoint.com/predict'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'country': selectedCountry,
-            'bmi': double.parse(bmiController.text),
-            'income_composition':
-                double.parse(incomeCompositionController.text),
-          }),
-        );
-
-        if (response.statusCode == 200) {
-          final result = json.decode(response.body);
-          _showPredictionResult(result['prediction']);
-        } else {
-          throw Exception('Failed to predict life expectancy');
-        }
-      } catch (e) {
-        _showErrorDialog('An error occurred: $e');
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      final data = {
+        'rd_spend': double.parse(rdSpendController.text),
+        'administration': double.parse(administrationController.text),
+        'marketing_spend': double.parse(marketingSpendController.text),
+      };
+      Provider.of<LifeExpectancyModel>(context, listen: false)
+          .predictLifeExpectancy(data);
     }
   }
 
-  void _showPredictionResult(dynamic result) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Predicted Life Expectancy',
-              style: TextStyle(color: Colors.teal)),
-          content: Text('The predicted life expectancy is: $result years',
-              style: TextStyle(fontSize: 18)),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Close', style: TextStyle(color: Colors.teal)),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+  Widget _buildInputField(String label, TextEditingController controller,
+      {bool autofocus = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          autofocus: autofocus,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$'))
           ],
-        ).animate().scale(duration: 300.ms, curve: Curves.easeOutQuad);
-      },
-    );
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Error'),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              child: Text('OK'),
-              onPressed: () => Navigator.of(context).pop(),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
             ),
-          ],
-        );
-      },
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter $label';
+            }
+            return null;
+          },
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Life Expectancy Calculator',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ... (rest of the UI code remains the same)
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _predictLifeExpectancy,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    child: _isLoading
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text('Predict Life Expectancy',
-                            style: TextStyle(fontSize: 18)),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                  ),
-                )
-                    .animate()
-                    .fade(duration: 500.ms)
-                    .slide(begin: Offset(0, 0.5), curve: Curves.easeOutQuad),
-              ],
-            ),
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Life Expectancy Calculator',
+            style: TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            textAlign: TextAlign.center,
           ),
-        ),
+          const SizedBox(height: 30),
+          _buildInputField('R&D Spend', rdSpendController, autofocus: true),
+          const SizedBox(height: 20),
+          _buildInputField('Administration', administrationController),
+          const SizedBox(height: 20),
+          _buildInputField('Marketing Spend', marketingSpendController),
+          const SizedBox(height: 30),
+          Consumer<LifeExpectancyModel>(
+            builder: (context, model, child) {
+              return ElevatedButton(
+                onPressed: model.isLoading ? null : _predictLifeExpectancy,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  child: model.isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Predict Life Expectancy',
+                          style: TextStyle(fontSize: 18)),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                ),
+              ).animate().fade(duration: 500.ms).slide(
+                  begin: const Offset(0, 0.5), curve: Curves.easeOutQuad);
+            },
+          ),
+          const SizedBox(height: 20),
+          Consumer<LifeExpectancyModel>(
+            builder: (context, model, child) {
+              if (model.prediction != null) {
+                return Text(
+                  'Predicted Life Expectancy: ${model.prediction} years',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                  textAlign: TextAlign.center,
+                );
+              } else if (model.error != null) {
+                return Text(
+                  model.error!,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red),
+                  textAlign: TextAlign.center,
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
