@@ -78,55 +78,93 @@ class _ProfitFormState extends State<ProfitForm> {
       appBar: AppBar(
         title: Text('Profit Prediction'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: <Widget>[
-              TextFormField(
-                controller: _rdSpendController,
-                decoration: InputDecoration(labelText: 'R&D Spend'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter R&D Spend';
-                  }
-                  return null;
-                },
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.green.shade200, Colors.green.shade800],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    TextFormField(
+                      controller: _rdSpendController,
+                      decoration: InputDecoration(
+                        labelText: 'R&D Spend',
+                        labelStyle: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter R&D Spend';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 20),
+                    TextFormField(
+                      controller: _administrationController,
+                      decoration: InputDecoration(
+                        labelText: 'Administration',
+                        labelStyle: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Administration';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 20),
+                    TextFormField(
+                      controller: _marketingSpendController,
+                      decoration: InputDecoration(
+                        labelText: 'Marketing Spend',
+                        labelStyle: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Marketing Spend';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 30),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          _submitData();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                        surfaceTintColor: Colors.white,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      ),
+                      child: Text('Predict', style: TextStyle(fontSize: 18)),
+                    ),
+                  ],
+                ),
               ),
-              TextFormField(
-                controller: _administrationController,
-                decoration: InputDecoration(labelText: 'Administration'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter Administration';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _marketingSpendController,
-                decoration: InputDecoration(labelText: 'Marketing Spend'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter Marketing Spend';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    _submitData();
-                  }
-                },
-                child: Text('Submit'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
